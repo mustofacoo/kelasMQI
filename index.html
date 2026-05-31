@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Markaz Qiroat Indonesia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="tampilan.css"/>
+
+</head>
+<body>
+<div id="app">
+
+  <div v-if="showHiddenAdminLogin" class="admin-login-modal" role="dialog" aria-modal="true" aria-labelledby="admin-login-title" @click.self="showHiddenAdminLogin=false">
+    <div class="admin-login-box">
+      <div id="admin-login-title" class="admin-login-title">🔐 Admin Access</div>
+      <div class="admin-login-subtitle">Masukkan password admin untuk melanjutkan</div>
+      
+      <div v-if="adminLoginError" class="admin-login-error">
+        {{ adminLoginError }}
+      </div>
+      
+      <input 
+        class="admin-login-input" 
+        type="password" 
+        placeholder="Masukkan password..."
+        v-model="adminLoginPassword"
+        @keyup.enter="doAdminLogin"
+      />
+      
+      <div class="admin-login-buttons">
+        <button class="admin-login-btn admin-login-btn-cancel" @click="showHiddenAdminLogin=false">
+          Batal
+        </button>
+        <button class="admin-login-btn admin-login-btn-submit" @click="doAdminLogin">
+          Login
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ LANDING PAGE ══════════════════ -->
+  <template v-if="page === 'home'">
+    <!-- NAVBAR -->
+    <nav class="navbar">
+    <div class="navbar-inner">
+    <a href="#" class="navbar-brand">
+      <div class="navbar-logo">
+        <img src="logomqi.png" alt="Logo Markaz Qiroat Indonesia" />
+      </div>
+      <div class="navbar-name">
+        Markaz Qiroat Indonesia
+        <span>Daftar Kelas/Program MQI</span>
+      </div>
+    </a>
+  </div>
+</nav>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-pattern"></div>
+      <div style="position:relative">
+        <h1 class="hero-title">Membumikan Ilmu <em>Qiroat</em><br>di Nusantara</h1>
+        <p class="hero-sub">Bantu pecinta Qur'an untuk <italic>level up</italic> hafalan, mahir tajwid dan tuntas mempelajari Ilmu Qiro'at</p>
+        <a href="#kelas" class="hero-cta">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+          Lihat Kelas Tersedia
+        </a>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-num">{{ openCount }}</div>
+            <div class="hero-stat-label">Kelas Dibuka</div>
+          </div>
+          <div class="hero-divider"></div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">{{ classes.length }}</div>
+            <div class="hero-stat-label">Total Program</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KELAS SECTION -->
+    <section class="section" id="kelas">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-eyebrow">Kelas dan Program</div>
+         <!-- <p class="section-sub">Temukan program yang sesuai dengan level dan kebutuhan Anda</p>-->
+        </div>
+
+        <!-- SEARCH -->
+        <div class="search-wrap">
+          <svg class="search-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <label class="sr-only" for="searchClass">Cari kelas atau program</label>
+          <input id="searchClass" class="search-input" type="text" placeholder="Cari nama kelas atau program..." v-model="searchQuery"/>
+        </div>
+
+        <!-- FILTER TABS -->
+        <div class="filter-tabs">
+          <button class="filter-tab" :class="{active: filterStatus==='all'}" @click="filterStatus='all'">Semua</button>
+          <button class="filter-tab" :class="{active: filterStatus==='dibuka'}" @click="filterStatus='dibuka'">Dibuka</button>
+          <button class="filter-tab" :class="{active: filterStatus==='ditutup'}" @click="filterStatus='ditutup'">Ditutup</button>
+          <button class="filter-tab" :class="{active: filterStatus==='segera'}" @click="filterStatus='segera'">Segera Hadir</button>
+        </div>
+
+        <!-- SKELETON LOADING -->
+        <div v-if="isLoading" class="classes-grid">
+          <div v-for="n in 6" :key="n" class="skeleton-card">
+            <div class="skeleton skeleton-thumb"></div>
+            <div class="skeleton-body">
+              <div class="skeleton skeleton-line title"></div>
+              <div class="skeleton skeleton-line sub"></div>
+              <div class="skeleton skeleton-line sub"></div>
+              <div class="skeleton skeleton-line short" style="margin-top:20px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div v-else-if="filteredClasses.length === 0" class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">Tidak ada kelas ditemukan</div>
+          <div class="empty-sub" v-if="searchQuery">Coba kata kunci lain atau hapus filter</div>
+          <div class="empty-sub" v-else>Belum ketemu</div>
+        </div>
+
+        <!-- GRID -->
+        <div v-else class="classes-grid">
+          <div
+            v-for="cls in filteredClasses" :key="cls.id"
+            class="class-card"
+            :class="{'is-open': cls.status==='dibuka', 'is-closed': cls.status==='ditutup'}"
+            :tabindex="cls.status==='dibuka' ? 0 : -1"
+            :role="cls.status==='dibuka' ? 'button' : 'article'"
+            :aria-label="cls.status==='dibuka' ? `Lihat detail dan daftar ${cls.nama}` : cls.nama"
+            @click="cls.status==='dibuka' && openModal(cls)"
+            @keydown.enter.prevent="openModal(cls)"
+            @keydown.space.prevent="openModal(cls)"
+          >
+
+            <div class="card-body">
+              <div class="card-title">{{ cls.nama }}</div>
+              <div class="card-desc">{{ cls.deskripsi }}</div>
+              <div class="card-meta" v-if="cls.jadwal">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                {{ cls.jadwal }} 
+                <span class="card-meta-dot"></span>
+                {{ cls.pengajar || 'Pengajar Markaz' }}
+              </div>
+            </div>
+            <div class="card-footer">
+              <a v-if="cls.status==='dibuka' && cls.formUrl" :href="cls.formUrl" target="_blank" rel="noopener noreferrer" class="btn btn-gold" @click.stop>
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Daftar Sekarang
+              </a>
+              <button v-else-if="cls.status==='dibuka'" class="btn btn-disabled" disabled>
+                Link Form Belum Ada
+              </button>
+              <button v-else-if="cls.status==='ditutup'" class="btn btn-disabled" disabled>
+                Pendaftaran Ditutup
+              </button>
+              <button v-else class="btn btn-soon">
+                Segera hadir
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-top">
+          <div class="footer-brand">
+            <div class="footer-logo">
+              <div class="footer-logo-icon">
+                <img src="logomqi.png" alt="Logo Markaz Qiroat Indonesia" />
+              </div>
+              <div class="footer-logo-name">
+                Markaz Qiroat Indonesia
+                <span></span>
+              </div>
+            </div>
+            <p class="footer-desc"></p>
+            <div class="footer-socials">
+              <a class="social-btn" href="https://wa.me/6285799799997" target="_blank" title="WhatsApp">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+              </a>
+              <a class="social-btn" href="https://www.instagram.com/mqimedia/" target="_blank" title="Instagram">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor"/></svg>
+              </a>
+              <a class="social-btn" href="https://www.youtube.com/@mqimedia1" target="_blank" title="Youtube">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+              </a>
+            </div>
+          </div>
+          <div class="footer-links">
+            <div class="footer-col">
+              <div class="footer-col-title">Tentang Kami</div>
+              <a href="#" class="footer-link">Visi & Misi</a>
+              <a href="#" class="footer-link">Sejarah</a>
+            </div>
+
+          </div>
+        </div>
+       <!-- <div class="footer-bottom">
+          <div class="footer-bottom-left">© 2024 Markaz Qiroat Indonesia. Semua hak cipta dilindungi.</div>
+          <div class="footer-bottom-right">
+          </div>-->
+        </div>
+      </div>
+    </footer>
+  </template>
+
+  <!-- ══════════════════ ADMIN PAGE ══════════════════ -->
+  <template v-else-if="page === 'admin' && isLoggedIn">
+  <div class="admin-panel">
+    <nav class="navbar" style="background:#111827">
+      <div class="navbar-inner">
+        <a href="#" class="navbar-brand">
+          <div class="navbar-logo">م</div>
+          <div class="navbar-name" style="color:white">
+            Markaz Qiroat Indonesia
+            <span style="color:rgba(255,255,255,.6)">Admin Panel</span>
+          </div>
+        </a>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-outline btn-sm" @click="page='home'" style="color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2)">
+            👁 Lihat Site
+          </button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:none" @click="doLogout">
+            Logout
+          </button>
+        </div>
+      </nav>
+
+      <div class="admin-main">
+        <!-- HEADER -->
+        <div class="admin-header">
+          <div>
+            <div class="admin-title">Kelola Kelas & Program</div>
+            <div class="admin-subtitle">Tambah, edit, hapus, atau ubah status kelas dengan mudah · Data: {{ dataSourceLabel }}</div>
+          </div>
+          <button class="btn btn-gold btn-sm" style="width:auto;padding:10px 20px" @click="showAddForm=!showAddForm">
+            {{ showAddForm ? '✕ Batal' : '+ Tambah Kelas' }}
+          </button>
+        </div>
+
+        <!-- ADD / EDIT FORM -->
+        <div v-if="showAddForm || editingId" class="form-panel">
+          <div class="form-panel-title">
+            {{ editingId ? '✏️ Edit Kelas' : '➕ Tambah Kelas Baru' }}
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Nama Kelas *</label>
+              <input class="form-input" v-model="form.nama" placeholder="Contoh: Qiroat Sab'ah Tingkat Dasar" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Kategori</label>
+              <input class="form-input" v-model="form.kategori" placeholder="Contoh: Qiroat, Tahsin..." />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Deskripsi Singkat *</label>
+            <textarea class="form-input form-textarea" v-model="form.deskripsi" placeholder="Jelaskan secara singkat isi dan tujuan kelas ini..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Pengajar</label>
+              <input class="form-input" v-model="form.pengajar" placeholder="Nama pengajar / ustaz" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Jadwal</label>
+              <input class="form-input" v-model="form.jadwal" placeholder="Contoh: Sabtu, 08.00 WIB" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Status *</label>
+              <select class="form-select" v-model="form.status">
+                <option value="dibuka">✅ Dibuka</option>
+                <option value="ditutup">🔒 Ditutup</option>
+                <option value="segera">🔔 Segera Hadir</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Link Google Form</label>
+              <input class="form-input" v-model="form.formUrl" placeholder="https://forms.google.com/..." />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-outline btn-sm" style="width:auto" @click="cancelEdit">Batal</button>
+            <button class="btn btn-primary btn-sm" style="width:auto;padding:9px 22px" @click="saveClass">
+              {{ isSaving ? 'Menyimpan...' : (editingId ? 'Simpan Perubahan' : 'Tambah Kelas') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- ADMIN PASSWORD -->
+        <div class="form-panel">
+          <div class="form-panel-title">🔑 Ubah Password Admin</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Password Lama</label>
+              <input class="form-input" type="password" v-model="passwordForm.current" autocomplete="current-password" placeholder="Password lama" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password Baru</label>
+              <input class="form-input" type="password" v-model="passwordForm.next" autocomplete="new-password" placeholder="Minimal 8 karakter" />
+            </div>
+          </div>
+          <div class="form-row password-actions-row">
+            <div class="form-group">
+              <label class="form-label">Konfirmasi Password Baru</label>
+              <input class="form-input" type="password" v-model="passwordForm.confirm" autocomplete="new-password" placeholder="Ulangi password baru" />
+            </div>
+            <div class="form-actions form-actions-inline">
+              <button class="btn btn-primary btn-sm" style="width:auto;padding:9px 22px" @click="changeAdminPassword">
+                {{ isChangingPassword ? 'Mengubah...' : 'Ubah Password' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIST -->
+        <div class="admin-list">
+          <div v-if="classes.length === 0" class="empty-state" style="background:white;border-radius:16px;padding:60px 20px">
+            <div class="empty-icon">📚</div>
+            <div class="empty-title">Belum ada kelas</div>
+            <div class="empty-sub">Klik tombol "Tambah Kelas" untuk memulai</div>
+          </div>
+          <div v-for="(cls, index) in classes" :key="cls.id" class="admin-item">
+            <div class="admin-item-thumb">م</div>
+            <div class="admin-item-info">
+              <div class="admin-item-name">{{ cls.nama }}</div>
+              <div class="admin-item-meta">{{ cls.kategori || 'Tanpa Kategori' }} · {{ cls.pengajar || 'Pengajar belum diisi' }}</div>
+            </div>
+            <div class="admin-item-actions">
+              <!-- STATUS TOGGLE -->
+              <div class="status-toggle">
+                <button class="status-toggle-btn" :class="{'active-open': cls.status==='dibuka'}" @click="setStatus(cls,'dibuka')">Dibuka</button>
+                <button class="status-toggle-btn" :class="{'active-closed': cls.status==='ditutup'}" @click="setStatus(cls,'ditutup')">Ditutup</button>
+                <button class="status-toggle-btn" :class="{'active-soon': cls.status==='segera'}" @click="setStatus(cls,'segera')">Segera</button>
+              </div>
+              <button class="btn btn-outline btn-sm" @click="startEdit(cls)">✏️ Edit</button>
+              <button class="btn btn-danger btn-sm" @click="deleteClass(cls.id)">🗑</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </template>
+
+  <!-- ══════════════════ MODAL ══════════════════ 
+  <div v-if="selectedClass" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="class-modal-title" @click.self="selectedClass=null">
+    <div class="modal">
+      <button class="modal-close" type="button" aria-label="Tutup modal" @click="selectedClass=null">×</button>
+
+      <div class="modal-body">
+        <div id="class-modal-title" class="modal-title">{{ selectedClass.nama }}</div>
+        <div class="modal-category">{{ selectedClass.kategori || 'Qiroat' }}</div>
+        <div class="modal-desc">{{ selectedClass.deskripsi }}</div>
+        <div class="modal-info">
+          <div class="modal-info-row" v-if="selectedClass.pengajar">
+            <div class="modal-info-icon">👤</div>
+            <div>
+              <div class="modal-info-label">Pengajar</div>
+              <div class="modal-info-value">{{ selectedClass.pengajar }}</div>
+            </div>
+          </div>
+          <div class="modal-info-row" v-if="selectedClass.jadwal">
+            <div class="modal-info-icon">📅</div>
+            <div>
+              <div class="modal-info-label">Jadwal</div>
+              <div class="modal-info-value">{{ selectedClass.jadwal }}</div>
+            </div>
+          </div>
+          <div class="modal-info-row">
+            <div class="modal-info-icon">📋</div>
+            <div>
+              <div class="modal-info-label">Status Pendaftaran</div>
+              <div class="modal-info-value">{{ badgeLabel(selectedClass.status) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" @click="selectedClass=null">Tutup</button>
+        <a v-if="selectedClass.formUrl" :href="selectedClass.formUrl" target="_blank" rel="noopener noreferrer" class="btn btn-gold">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Daftar via Google Form
+        </a>
+        <span v-else class="btn btn-disabled" style="cursor:default">Link Form Belum Ada</span>
+      </div>
+    </div>
+  </div>-->
+
+  <!-- TOAST -->
+  <div class="toast-wrap">
+    <div v-for="t in toasts" :key="t.id" class="toast" :class="t.type">
+      {{ t.msg }}
+    </div>
+  </div>
+
+</div>
+
+<script src="supabase.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
