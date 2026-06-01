@@ -49,23 +49,23 @@ createApp({
       confirm: ''
     });
 
-    onMounted(async () => {
-      await loadClasses();
+onMounted(async () => {
+  // Cek sesi dulu sebelum load, agar status login sudah benar saat UI render
+  try {
+    const session = await db.getSession();
+    if (session) {
+      isLoggedIn.value = true;
+      page.value = 'admin';
+    }
+  } catch (e) {
+    console.warn('Gagal cek sesi:', e);
+  }
 
-      // Cek sesi Supabase Auth (agar admin tidak perlu login ulang setelah refresh)
-      try {
-        const session = await db.getSession();
-        if (session) {
-          isLoggedIn.value = true;
-          page.value = 'admin';
-        }
-      } catch (e) {
-        console.warn('Gagal cek sesi:', e);
-      }
+  await loadClasses();
 
-      window.addEventListener('keydown', handleKeyboardShortcut);
-      window.addEventListener('keydown', handleEscape);
-    });
+  window.addEventListener('keydown', handleKeyboardShortcut);
+  window.addEventListener('keydown', handleEscape);
+});
 
     onUnmounted(() => {
       window.removeEventListener('keydown', handleKeyboardShortcut);
@@ -126,6 +126,9 @@ createApp({
 
     const openCount = computed(() => classes.value.filter(c => c.status === 'dibuka').length);
 
+
+    const STATUS_ORDER = { dibuka: 0, segera: 1, ditutup: 2 };
+
     const filteredClasses = computed(() => {
       let list = classes.value;
       if (filterStatus.value !== 'all') list = list.filter(c => c.status === filterStatus.value);
@@ -137,14 +140,30 @@ createApp({
           (c.kategori || '').toLowerCase().includes(q)
         );
       }
-      return list;
+      return [...list].sort((a, b) =>
+        (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
+      );
     });
+    const sortedAdminClasses = computed(() =>
+  [...classes.value].sort((a, b) =>
+    (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
+  )
+);
 
-    const cardBg = (cls) => {
-      const idx = cls.id % COLORS.length;
-      const [c1,c2] = COLORS[idx];
-      return { background: `linear-gradient(135deg, ${c1}, ${c2})` };
-    };
+const hashId = (id) => {
+  const str = String(id);
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) & 0xffff;
+  }
+  return hash;
+};
+
+const cardBg = (cls) => {
+  const idx = hashId(cls.id) % COLORS.length;
+  const [c1, c2] = COLORS[idx];
+  return { background: `linear-gradient(135deg, ${c1}, ${c2})` };
+};
 
     const badgeClass = (status) => ({ dibuka:'badge-open', ditutup:'badge-closed', segera:'badge-soon' }[status]);
     const badgeLabel = (status) => ({ dibuka:'Dibuka', ditutup:'Ditutup', segera:'Segera Hadir' }[status]);
@@ -326,7 +345,7 @@ createApp({
 
     return {
       page, isLoggedIn, isLoading, isSaving, isChangingPassword, dataSourceLabel,
-      classes, searchQuery, filterStatus, selectedClass,
+      classes, sortedAdminClasses, searchQuery, filterStatus, selectedClass,
       showAddForm, editingId, form, passwordForm, toasts,
       openCount, filteredClasses,
       cardBg, badgeClass, badgeLabel, openModal,
