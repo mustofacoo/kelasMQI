@@ -259,25 +259,25 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Nama Kelas *</label>
-              <input class="form-input" v-model="form.nama" placeholder="Contoh: Qiroat Sab'ah Tingkat Dasar" />
+              <input class="form-input" v-model="form.nama"  />
             </div>
             <div class="form-group">
               <label class="form-label">Kategori</label>
-              <input class="form-input" v-model="form.kategori" placeholder="Contoh: Qiroat, Tahsin..." />
+              <input class="form-input" v-model="form.kategori"  />
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Deskripsi Singkat *</label>
-            <textarea class="form-input form-textarea" v-model="form.deskripsi" placeholder="Jelaskan secara singkat isi dan tujuan kelas ini..."></textarea>
+            <textarea class="form-input form-textarea" v-model="form.deskripsi" ></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Pengajar</label>
-              <input class="form-input" v-model="form.pengajar" placeholder="Nama pengajar / ustaz" />
+              <input class="form-input" v-model="form.pengajar"  />
             </div>
             <div class="form-group">
               <label class="form-label">Jadwal</label>
-              <input class="form-input" v-model="form.jadwal" placeholder="Contoh: Sabtu, 08.00 WIB" />
+              <input class="form-input" v-model="form.jadwal"  />
             </div>
           </div>
           <div class="form-row">
@@ -291,7 +291,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Link Google Form</label>
-              <input class="form-input" v-model="form.formUrl" placeholder="https://forms.google.com/..." />
+              <input class="form-input" v-model="form.formUrl"  />
             </div>
           </div>
           <div class="form-actions">
@@ -302,31 +302,7 @@
           </div>
         </div>
 
-        <!-- ADMIN PASSWORD -->
-        <div class="form-panel">
-          <div class="form-panel-title">🔑 Ubah Password Admin</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Password Lama</label>
-              <input class="form-input" type="password" v-model="passwordForm.current" autocomplete="current-password" placeholder="Password lama" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Password Baru</label>
-              <input class="form-input" type="password" v-model="passwordForm.next" autocomplete="new-password" placeholder="Minimal 8 karakter" />
-            </div>
-          </div>
-          <div class="form-row password-actions-row">
-            <div class="form-group">
-              <label class="form-label">Konfirmasi Password Baru</label>
-              <input class="form-input" type="password" v-model="passwordForm.confirm" autocomplete="new-password" placeholder="Ulangi password baru" />
-            </div>
-            <div class="form-actions form-actions-inline">
-              <button class="btn btn-primary btn-sm" style="width:auto;padding:9px 22px" @click="changeAdminPassword">
-                {{ isChangingPassword ? 'Mengubah...' : 'Ubah Password' }}
-              </button>
-            </div>
-          </div>
-        </div>
+
 
         <!-- LIST -->
         <div class="admin-list">
@@ -353,12 +329,37 @@
             </div>
           </div>
         </div>
+                <!-- ADMIN PASSWORD 
+        <div class="form-panel">
+          <div class="form-panel-title">🔑 Ubah Password Admin</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Password Lama</label>
+              <input class="form-input" type="password" v-model="passwordForm.current" autocomplete="current-password" placeholder="Password lama" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password Baru</label>
+              <input class="form-input" type="password" v-model="passwordForm.next" autocomplete="new-password" placeholder="Minimal 8 karakter" />
+            </div>
+          </div>
+          <div class="form-row password-actions-row">
+            <div class="form-group">
+              <label class="form-label">Konfirmasi Password Baru</label>
+              <input class="form-input" type="password" v-model="passwordForm.confirm" autocomplete="new-password" placeholder="Ulangi password baru" />
+            </div>
+            <div class="form-actions form-actions-inline">
+              <button class="btn btn-primary btn-sm" style="width:auto;padding:9px 22px" @click="changeAdminPassword">
+                {{ isChangingPassword ? 'Mengubah...' : 'Ubah Password' }}
+              </button>
+            </div>
+          </div>
+        </div>-->
 
       </div>
     </div>
   </template>
 
-  <!-- ══════════════════ MODAL ══════════════════ 
+
   <div v-if="selectedClass" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="class-modal-title" @click.self="selectedClass=null">
     <div class="modal">
       <button class="modal-close" type="button" aria-label="Tutup modal" @click="selectedClass=null">×</button>
@@ -395,12 +396,12 @@
         <button class="btn btn-outline" @click="selectedClass=null">Tutup</button>
         <a v-if="selectedClass.formUrl" :href="selectedClass.formUrl" target="_blank" rel="noopener noreferrer" class="btn btn-gold">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Daftar via Google Form
+          Daftar
         </a>
         <span v-else class="btn btn-disabled" style="cursor:default">Link Form Belum Ada</span>
       </div>
     </div>
-  </div>-->
+  </div>
 
   <!-- TOAST -->
   <div class="toast-wrap">
